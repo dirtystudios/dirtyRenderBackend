@@ -13,7 +13,6 @@ namespace gfx {
         R32Float,
         RGB32Float,
         RGBA32Float,
-        RGBA32Unorm,
         BGRA8Unorm,
         Depth32Float,
         Depth32FloatStencil8,

@@ -1,8 +1,16 @@
 #pragma once
 #include <Windows.h>
 #include <d3d11.h>
-#include "Log.h"
 #include <cassert>
+
+#ifdef HAS_LOG_IMPL
+#include "Log.h"
+#else
+#include <cstdio>
+#define LOG_E printf
+#define LOG_D printf
+#endif
+
 
 #ifdef _DEBUG
 #define DEBUG_DX11

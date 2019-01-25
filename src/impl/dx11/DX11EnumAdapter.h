@@ -6,7 +6,6 @@
 #include <wrl.h>
 
 #include "BufferAccess.h"
-#include "BufferUsage.h"
 #include "ParamType.h"
 #include "BlendMode.h"
 #include "CullMode.h"
@@ -16,7 +15,6 @@
 #include "BlendState.h"
 #include "WindingOrder.h"
 #include "PixelFormat.h"
-#include "Helpers.h"
 #include "PrimitiveType.h"
 #include "RasterState.h"
 #include "DepthFunc.h"
@@ -70,22 +68,23 @@ namespace gfx {
 
     static UINT GetBindFlagsDX11(TextureUsageFlags flags, PixelFormat format) {
         UINT rtn = 0;
-        uint32_t check = (uint32_t)flags;
+        auto check = flags;
 
-        if (flags & TextureUsageFlags::RenderTarget) {
+        if (flags.test(TextureUsageBitPositionRenderTarget)) {
             if (format == PixelFormat::Depth32Float || format == PixelFormat::Depth32FloatStencil8)
                 rtn |= D3D11_BIND_DEPTH_STENCIL;
             else
                 rtn |= D3D11_BIND_RENDER_TARGET;
 
-            check &= ~(uint32_t)TextureUsageFlags::RenderTarget;
+            check.reset(TextureUsageBitPositionRenderTarget);
         }
 
-        if ((flags & TextureUsageFlags::ShaderRead) || (flags & TextureUsageFlags::ShaderWrite)) {
+        if (flags.test(TextureUsageBitPositionShaderRead) || flags.test(TextureUsageBitPositionShaderWrite)) {
             rtn |= D3D11_BIND_SHADER_RESOURCE;
-            check &= ~((uint32_t)TextureUsageFlags::ShaderRead | (uint32_t)TextureUsageFlags::ShaderWrite);
+			check.reset(TextureUsageBitPositionShaderRead);
+			check.reset(TextureUsageBitPositionShaderWrite);
         }
-        dg_assert(check == 0, "unhandled usage flag");
+        dg_assert(!check.any(), "unhandled usage flag");
         return rtn;
     }
 

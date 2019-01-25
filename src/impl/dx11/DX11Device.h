@@ -61,7 +61,7 @@ namespace gfx {
 
         PipelineStateId CreatePipelineState(const PipelineStateDesc& desc) final;
 
-        TextureId CreateTexture2D(PixelFormat format, TextureUsageFlags usage, uint32_t width, uint32_t height, void* data, const std::string& debugName = "") final;
+        TextureId CreateTexture2D(PixelFormat format, const TextureUsageFlags& usage, uint32_t width, uint32_t height, void* data, const std::string& debugName = "") final;
         TextureId CreateTextureArray(PixelFormat format, uint32_t levels, uint32_t width, uint32_t height,
             uint32_t depth, const std::string& debugName) final;
 
@@ -73,7 +73,7 @@ namespace gfx {
         void UpdateTexture(TextureId textureId, uint32_t slice, const void* srcData) final;
         void Submit(const std::vector<CommandBuffer*>& cmdBuffers) final;
 
-        uint8_t* MapMemory(BufferId buffer, BufferAccess) final;
+        uint8_t* MapMemory(BufferId buffer, const BufferAccess&) final;
         void UnmapMemory(BufferId buffer) final;
 
         void DestroyResource(ResourceId resourceId) final {};

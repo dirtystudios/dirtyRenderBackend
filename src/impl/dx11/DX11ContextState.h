@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DX11EnumAdapter.h"
+#include "Framebuffer.h"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -26,7 +27,7 @@ namespace gfx {
         std::unordered_map<uint32_t, ID3D11SamplerState*> psSamplers;
         std::unordered_set<uint32_t> psDirtyTextureSlots;
 
-        std::array<ID3D11RenderTargetView*, 8> rtvs{};
+        std::array<ID3D11RenderTargetView*, kMaxFramebufferColorAttachments> rtvs{};
         uint8_t rtv_count{ 0 };
 
         ID3D11DepthStencilView* dsv;

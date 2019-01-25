@@ -1,5 +1,4 @@
 #include "DX11Device.h"
-#include "Log.h"
 #include "SimpleShaderLibrary.h"
 #include "DX11Debug.h"
 #include "TexConvert.h"
@@ -17,10 +16,10 @@ namespace gfx {
 
         D3D11_BUFFER_DESC bufferDesc = { 0 };
 
-        if ((desc.accessFlags & BufferAccessFlags::GpuReadCpuWriteBits) == BufferAccessFlags::GpuReadCpuWriteBits) {
+        if (desc.accessFlags == BufferAccessBitGpuReadCpuWrite) {
             bufferDesc.Usage = D3D11_USAGE_DYNAMIC;
         }
-        else if ((desc.accessFlags & BufferAccessFlags::GpuReadBit) == BufferAccessFlags::GpuReadBit) {
+        else if (desc.accessFlags == BufferAccessBitGpuRead) {
             bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
         }
         else {
@@ -392,7 +391,7 @@ namespace gfx {
         return id;
     }
 
-    TextureId DX11Device::CreateTexture2D(PixelFormat format, TextureUsageFlags usage, uint32_t width, uint32_t height, void* data, const std::string& debugName) {
+    TextureId DX11Device::CreateTexture2D(PixelFormat format, const TextureUsageFlags& usage, uint32_t width, uint32_t height, void* data, const std::string& debugName) {
         D3D11_TEXTURE2D_DESC tdesc = { 0 };
         tdesc.Width = width;
         tdesc.Height = height;
@@ -605,7 +604,7 @@ namespace gfx {
         m_immediateContext->UpdateSubResource(texDX11->texture.Get(), slice, box, srcData, formatByteSize * texDX11->width, formatByteSize * texDX11->height * texDX11->width);
     }
 
-    uint8_t* DX11Device::MapMemory(BufferId buffer, BufferAccess access) {
+    uint8_t* DX11Device::MapMemory(BufferId buffer, const BufferAccess& access) {
         if (access != BufferAccess::Write && access != BufferAccess::WriteNoOverwrite)
             assert(false);
         BufferDX11* bufferdx11 = m_resourceManager->GetResource<BufferDX11>(buffer);

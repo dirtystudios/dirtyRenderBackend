@@ -44,7 +44,7 @@ namespace gfx {
         m_pendingState.blendState = state;
     }
 
-    void DX11Context::SetRenderTargets(std::array<ID3D11RenderTargetView*, 8> rtvs, uint8_t rtvCount, ID3D11DepthStencilView* depthStencil) {
+    void DX11Context::SetRenderTargets(std::array<ID3D11RenderTargetView*, kMaxFramebufferColorAttachments> rtvs, uint8_t rtvCount, ID3D11DepthStencilView* depthStencil) {
         m_pendingState.rtvs = rtvs;
         m_pendingState.rtv_count = rtvCount;
         m_pendingState.dsv = depthStencil;
