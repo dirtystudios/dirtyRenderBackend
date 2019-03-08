@@ -45,7 +45,7 @@ namespace gfx {
         ~MetalPipelineState() {}
 
         id<MTLRenderPipelineState>   mtlPipelineState;
-        id<MTLDepthStencilState>     mtlDepthStencilState;
+        id<MTLDepthStencilState>     mtlDepthStencilState { nil };
         PipelineStateDesc            pipelineStateDesc;
         MTLRenderPipelineReflection* reflection;
     };

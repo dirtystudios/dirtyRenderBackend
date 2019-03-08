@@ -159,6 +159,8 @@ public:
                 return MTLPixelFormatDepth32Float;
             case PixelFormat::Depth32FloatStencil8:
                 return MTLPixelFormatDepth32Float_Stencil8;
+            case PixelFormat::R8Uint:
+                return MTLPixelFormatR8Uint;
             default:
                 dg_assert_fail_nm();
         }

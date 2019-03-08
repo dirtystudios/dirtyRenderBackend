@@ -41,6 +41,7 @@ id<MTLSamplerState> GetDefaultSampler(id<MTLDevice> device)
 uint32_t ComputeBytesPerRow(MTLPixelFormat format, uint32_t width)
 {
     switch (format) {
+        case MTLPixelFormatR8Uint:
         case MTLPixelFormatR8Unorm:
             return width;
         case MTLPixelFormatR32Float:
@@ -197,11 +198,14 @@ PipelineStateId MetalDevice::CreatePipelineState(const PipelineStateDesc& desc) 
     id<MTLRenderPipelineState>   mtlPipelineState = [_device newRenderPipelineStateWithDescriptor:rpd options:options reflection:&reflection error:&error];
     dg_assert(error == nil, "Failed to create pipeline state:%s", [[error localizedDescription] UTF8String]);
 
-    MTLDepthStencilDescriptor* dsd = [[MTLDepthStencilDescriptor alloc] init];
-    dsd.depthWriteEnabled          = desc.depthState.enable;
-    dsd.depthCompareFunction       = MetalEnumAdapter::toMTL(desc.depthState.depthFunc);
+    id<MTLDepthStencilState> mtlDepthStencilState = nil;
+    if (desc.depthState.enable) {
+        MTLDepthStencilDescriptor* dsd = [[MTLDepthStencilDescriptor alloc] init];
+        dsd.depthWriteEnabled          = desc.depthState.enable;
+        dsd.depthCompareFunction       = MetalEnumAdapter::toMTL(desc.depthState.depthFunc);
 
-    id<MTLDepthStencilState> mtlDepthStencilState = [_device newDepthStencilStateWithDescriptor:dsd];
+        mtlDepthStencilState = [_device newDepthStencilStateWithDescriptor:dsd];
+    }
 
     MetalPipelineState* pipelineState   = new MetalPipelineState();
     pipelineState->mtlPipelineState     = mtlPipelineState;

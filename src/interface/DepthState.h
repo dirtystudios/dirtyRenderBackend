@@ -5,10 +5,19 @@
 
 namespace gfx {
     struct DepthState {
+        static DepthState disabled()
+        {
+            DepthState state;
+            state.enable = false;
+            return state;
+        }
+        
         bool enable{true};
         DepthWriteMask depthWriteMask{DepthWriteMask::All};
         DepthFunc depthFunc{DepthFunc::Less};
     };
+    
+    
 }
 
 namespace std

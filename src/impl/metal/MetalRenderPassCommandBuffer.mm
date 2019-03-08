@@ -25,7 +25,9 @@ void MetalRenderPassCommandBuffer::setPipelineState(PipelineStateId pipelineStat
     
     _currentPipelineState = pipelineState;
     
-    [_encoder setDepthStencilState:pipelineState->mtlDepthStencilState];
+    if (pipelineState->mtlDepthStencilState) {
+        [_encoder setDepthStencilState:pipelineState->mtlDepthStencilState];
+    }
     [_encoder setFrontFacingWinding:MetalEnumAdapter::toMTL(pipelineState->pipelineStateDesc.rasterState.windingOrder)];
     [_encoder setCullMode:MetalEnumAdapter::toMTL(pipelineState->pipelineStateDesc.rasterState.cullMode)];
     [_encoder setTriangleFillMode:MetalEnumAdapter::toMTL(pipelineState->pipelineStateDesc.rasterState.fillMode)];

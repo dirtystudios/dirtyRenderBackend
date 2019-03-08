@@ -98,9 +98,12 @@ namespace gfx {
 
     static size_t GetByteCount(const VertexLayoutElement& attribute) { return GetByteCount(attribute.type, attribute.storage); }
 
-    struct VertexLayoutDesc {
+    struct VertexLayoutDesc
+    {        
         std::vector<VertexLayoutElement> elements;
-        size_t                           stride() {
+        
+        size_t stride()
+        {
             size_t vertexStride = 0;
             for (VertexLayoutElement& element : elements) {
                 vertexStride += GetByteCount(element);
