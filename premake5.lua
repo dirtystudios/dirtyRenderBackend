@@ -36,7 +36,3 @@ workspace "RenderBackend"
 
 
     include "gfx.lua"
-    -- vpaths { 
-    --     -- move all src files up one 
-    --     ["*"] = "src",
-    -- }

@@ -8,6 +8,11 @@ project "RenderBackend"
         "src/**.h",
     }
 
+    includedirs {
+        "src",
+        "src/**"
+    }
+
     filter "configurations:release"
         flags { "LinkTimeOptimization" }
 
@@ -16,11 +21,9 @@ project "RenderBackend"
 
         libdirs { "external/winlibs/%{cfg.platform}" }
         links { 
-            "d3d11",
-            "d3dcompiler",
-            "DXGI",
-            "dxguid",
+            "d3d11"
         }
+        removefiles { "src/**/metal/**"}
 
     filter "system:macosx"
         buildoptions { "-x objective-c++"}

@@ -1,7 +1,7 @@
 #pragma once
 #include "DX11ContextState.h"
-
 #include "DX11Debug.h"
+#include "Framebuffer.h"
 
 #include <unordered_map>
 #include <array>
@@ -62,7 +62,7 @@ namespace gfx {
         void SetVertexShader(ID3D11VertexShader* shader);
         void SetPixelShader(ID3D11PixelShader* shader);
 
-        void SetRenderTargets(std::array<ID3D11RenderTargetView*,8> rtvs, uint8_t rtvCount, ID3D11DepthStencilView* depthStencil);
+        void SetRenderTargets(std::array<ID3D11RenderTargetView*, kMaxFramebufferColorAttachments> rtvs, uint8_t rtvCount, ID3D11DepthStencilView* depthStencil);
         void SetViewport(const D3D11_VIEWPORT& vp);
 
         void SetPrimitiveType(D3D11_PRIMITIVE_TOPOLOGY top);

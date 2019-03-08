@@ -7,6 +7,19 @@
 namespace gfx {
     using namespace Microsoft::WRL;
 
+	static std::string VertexAttributeUsageToString(VertexAttributeUsage usage) {
+		switch (usage) {
+		case VertexAttributeUsage::Position:     return "POSITION";
+		case VertexAttributeUsage::Normal:       return "NORMAL";
+		case VertexAttributeUsage::Color0:       return "COLOR";
+		case VertexAttributeUsage::Texcoord0:    return "TEXCOORD";
+		case VertexAttributeUsage::BlendIndices: return "BLENDINDICES";
+		case VertexAttributeUsage::BlendWeights: return "BLENDWEIGHTS";
+		default: assert(false);
+		}
+		return "";
+	}
+
     DX11RenderPassCommandBuffer::DX11RenderPassCommandBuffer(ComPtr<ID3D11Device> dev, ComPtr<ID3D11DeviceContext> ctx, ResourceManager* rm, DX11Cache* cache)
         : _dev(dev), _rm(rm), _cache(cache) {
         _cmdBuf.reset(new DX11Context(ctx));
@@ -64,48 +77,53 @@ namespace gfx {
     }
 
     void DX11RenderPassCommandBuffer::SetupRenderTargets(const FrameBuffer& frameBuffer, const RenderPassDX11& rp) {
-        // set viewport based on first color or depthview
-        if (frameBuffer.colorCount > 0) {
-            TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.color[0]);
-            D3D11_TEXTURE2D_DESC desc;
-            buf->texture->GetDesc(&desc);
-            SetViewPort(desc.Height, desc.Width);
-        }
-        else if (frameBuffer.depth != 0) {
-            TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.depth);
-            D3D11_TEXTURE2D_DESC desc;
-            buf->texture->GetDesc(&desc);
-            SetViewPort(desc.Height, desc.Width);
-        }
 
-        std::array<ID3D11RenderTargetView*, 8> rtvs{};
-        for (uint32_t i = 0; i < frameBuffer.colorCount; ++i) {
-            TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.color[i]);
-            dg_assert_nm(buf->rtv.Get() != nullptr);
-            rtvs[(size_t)i] = buf->rtv.Get();
-        }
+		bool first = true;
+		std::array<ID3D11RenderTargetView*, kMaxFramebufferColorAttachments> rtvs{};
 
-        ID3D11DepthStencilView *dsv{ nullptr };
-        if (frameBuffer.depth != 0) {
-            TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.depth);
-            dg_assert_nm(buf->dsv.Get() != nullptr);
-            dsv = buf->dsv.Get();
-        }
+		for (const ColorAttachmentDesc& attachment : rp.info.colorAttachments()) {
+			dg_assert_nm(attachment.index < kMaxFramebufferColorAttachments && frameBuffer.color(attachment.index) != NULL_ID);
+			// set viewport based on first color
+			if (first) {
+				first = false;
+				TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.color(attachment.index));
+				D3D11_TEXTURE2D_DESC desc;
+				buf->texture->GetDesc(&desc);
+				SetViewPort(desc.Height, desc.Width);
+			}
+			TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.color(attachment.index));
+			dg_assert_nm(buf->rtv.Get() != nullptr);
+			rtvs[(size_t)attachment.index] = buf->rtv.Get();
+		}
 
-        _cmdBuf->SetRenderTargets(rtvs, frameBuffer.colorCount, dsv);
+		ID3D11DepthStencilView *dsv{ nullptr };
+		if (rp.info.hasDepth()) {
+			// set viewport on depth if no color attachment
+			if (rp.info.colorAttachments().size() == 0) {
+				TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.depth());
+				D3D11_TEXTURE2D_DESC desc;
+				buf->texture->GetDesc(&desc);
+				SetViewPort(desc.Height, desc.Width);
+			}
+
+			TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.depth());
+			dg_assert_nm(buf->dsv.Get() != nullptr);
+			dsv = buf->dsv.Get();
+		}
+        _cmdBuf->SetRenderTargets(rtvs, rp.info.colorAttachments().size(), dsv);
 
         // run through and clear the needful
 
-        for (uint32_t i = 0; i < rp.info.attachmentCount; ++i) {
-            const auto& a = rp.info.attachments[i];
+        for (uint32_t i = 0; i < rp.info.colorAttachments().size(); ++i) {
+            const auto& a = rp.info.colorAttachments()[i];
             if (a.loadAction == LoadAction::Clear)
                 _cmdBuf->ClearRenderTargetView(rtvs[i], 0.f, 0.f, 0.f, 0.f);
         }
 
-        if (rp.info.hasDepth || rp.info.hasStencil) {
-            TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.depth);
-            bool clearDepth = rp.info.hasDepth && rp.info.depthAttachment.loadAction == LoadAction::Clear;
-            bool clearStencil = rp.info.hasStencil && rp.info.stencilAttachment.loadAction == LoadAction::Clear;
+        if (rp.info.hasDepth() || rp.info.hasStencil()) {
+            TextureDX11* buf = _rm->GetResource<TextureDX11>(frameBuffer.depth());
+            bool clearDepth = rp.info.hasDepth() && rp.info.depthAttachment().value().loadAction == LoadAction::Clear;
+            bool clearStencil = rp.info.hasStencil() && rp.info.stencilAttachment().value().loadAction == LoadAction::Clear;
             _cmdBuf->ClearDepthStencil(buf->dsv.Get(), clearDepth, 1.f, clearStencil, 0);
         }
     }
@@ -144,21 +162,21 @@ namespace gfx {
         _cmdBuf->SetVertexBuffer(vb->buffer.Get());
     }
 
-    void DX11RenderPassCommandBuffer::setShaderBuffer(BufferId buffer, uint8_t index, ShaderStageFlags stages) {
+    void DX11RenderPassCommandBuffer::setShaderBuffer(BufferId buffer, uint8_t index, const ShaderStageFlags& stages) {
         BufferDX11* cbuffer = _rm->GetResource<BufferDX11>(buffer);
-        if (stages & ShaderStageFlags::VertexBit)
+        if (stages.test(ShaderStageBitPositionVertex))
             _cmdBuf->SetVertexCBuffer(index, cbuffer->buffer.Get());
-        if (stages & ShaderStageFlags::PixelBit)
+        if (stages.test(ShaderStageBitPositionPixel))
             _cmdBuf->SetPixelCBuffer(index, cbuffer->buffer.Get());
     }
 
-    void DX11RenderPassCommandBuffer::setShaderTexture(TextureId texture, uint8_t index, ShaderStageFlags stages) {
+    void DX11RenderPassCommandBuffer::setShaderTexture(TextureId texture, uint8_t index, const ShaderStageFlags& stages) {
         TextureDX11* texturedx11 = _rm->GetResource<TextureDX11>(texture);
-        if (stages & ShaderStageFlags::VertexBit) {
+        if (stages.test(ShaderStageBitPositionVertex)) {
             dg_assert_nm(texturedx11->srv);
             _cmdBuf->SetVertexShaderTexture(index, texturedx11->srv.Get(), texturedx11->sampler.Get());
         }
-        if (stages & ShaderStageFlags::PixelBit) {
+        if (stages.test(ShaderStageBitPositionPixel)) {
             dg_assert_nm(texturedx11->srv);
             _cmdBuf->SetPixelShaderTexture(index, texturedx11->srv.Get(), texturedx11->sampler.Get());
         }
