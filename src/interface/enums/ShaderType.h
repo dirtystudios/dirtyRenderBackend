@@ -11,6 +11,7 @@ namespace gfx {
         TessControlShader,
         TessEvalShader,
         PixelShader,
+        ComputeShader,
         Count,
     };
 }

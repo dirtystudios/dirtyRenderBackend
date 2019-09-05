@@ -40,6 +40,7 @@ namespace gfx {
         
         virtual BufferId AllocateBuffer(const BufferDesc& desc, const void* initialData = nullptr) = 0;
         virtual PipelineStateId CreatePipelineState(const PipelineStateDesc& desc) = 0;
+        virtual PipelineStateId CreateComputePipelineState(const ComputePipelineStateDesc& desc) {};
         virtual RenderPassId CreateRenderPass(const RenderPassInfo& renderPassInfo) = 0;
         virtual TextureId CreateTexture2D(PixelFormat format, const TextureUsageFlags& usage, uint32_t width, uint32_t height, void* data, const std::string& debugName = "") = 0;
         virtual TextureId CreateTextureArray(PixelFormat format, uint32_t levels, uint32_t width, uint32_t height, uint32_t depth, const std::string& debugName = "") = 0;

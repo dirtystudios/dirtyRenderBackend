@@ -96,6 +96,18 @@ void MetalRenderPassCommandBuffer::setVertexBuffer(BufferId vertexBuffer)
     [_encoder setVertexBuffer:buffer->mtlBuffer offset:0 atIndex:0];
 }
 
+void MetalRenderPassCommandBuffer::setViewport(double originX, double originY, double width, double height)
+{
+    MTLViewport viewport;
+    viewport.width = width;
+    viewport.height = height;
+    viewport.originX = originX;
+    viewport.originY = originY;
+    viewport.znear = 0.0;
+    viewport.zfar = 1.0;
+    [_encoder setViewport:viewport];
+}
+
 id<MTLRenderCommandEncoder> MetalRenderPassCommandBuffer::getMTLEncoder()
 {
     return _encoder;
