@@ -26,6 +26,7 @@ namespace gfx
     public:
         MetalRenderPassCommandBuffer(id<MTLRenderCommandEncoder> encoder, ResourceManager* resourceManager);
         virtual void setPipelineState(PipelineStateId pipelineStateId) override;
+        virtual void setViewport(double originX, double originY, double width, double height) override;
         virtual void setShaderBuffer(BufferId bufferId, uint8_t index, const ShaderStageFlags& stages) override;
         virtual void setShaderTexture(TextureId textureId, uint8_t index, const ShaderStageFlags& stages) override;
         virtual void drawIndexed(BufferId indexBufferId, uint32_t indexCount, uint32_t indexOffset, uint32_t baseVertexOffset) override;

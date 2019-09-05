@@ -20,6 +20,11 @@ struct PipelineStateDesc {
     RasterState rasterState;
     DepthState depthState;
 };
+
+struct ComputePipelineStateDesc
+{
+    ShaderId computeShader {NULL_ID};
+};
 }
 
 namespace std {
@@ -32,6 +37,16 @@ struct hash<gfx::PipelineStateDesc> {
                            s.pixelShader, s.vertexLayout,
                            s.topology, s.blendState,
                            s.rasterState, s.depthState);
+    }
+};
+}
+
+namespace std {
+template <>
+struct hash<gfx::ComputePipelineStateDesc> {
+    size_t operator()( gfx::ComputePipelineStateDesc const& s) const
+    {
+        return HashCombine(s.computeShader);
     }
 };
 }

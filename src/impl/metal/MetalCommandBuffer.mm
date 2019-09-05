@@ -9,6 +9,7 @@
 #include "ResourceManager.h"
 #include "MetalResources.h"
 #include "MetalRenderPassCommandBuffer.h"
+#include "MetalComputePassCommandBuffer.h"
 #include "MetalEnumAdapter.h"
 
 using namespace gfx;
@@ -20,8 +21,8 @@ MetalCommandBuffer::MetalCommandBuffer(id<MTLCommandBuffer> commandBuffer, Resou
 
 RenderPassCommandBuffer* MetalCommandBuffer::beginRenderPass(RenderPassId passId, const FrameBuffer& frameBuffer, const std::string& name)
 {
-    if (_currentPass) {
-        return nullptr;
+    if (_currentGraphicsPass || _currentComputePass) {
+        assert(false);
     }
     
     
@@ -35,20 +36,21 @@ RenderPassCommandBuffer* MetalCommandBuffer::beginRenderPass(RenderPassId passId
     MTLRenderPassDescriptor* renderPassDesc = getMTLRenderPassDescriptor(renderPass, frameBuffer);
     
     id<MTLRenderCommandEncoder> encoder = [_commandBuffer renderCommandEncoderWithDescriptor:renderPassDesc];
-    _currentPass.reset(new MetalRenderPassCommandBuffer(encoder, _resourceManager));
+    encoder.label = [NSString stringWithUTF8String:renderPass->info.label().c_str()];
+    _currentGraphicsPass.reset(new MetalRenderPassCommandBuffer(encoder, _resourceManager));
     
-    return _currentPass.get();
+    return _currentGraphicsPass.get();
 }
 
 void MetalCommandBuffer::endRenderPass(RenderPassCommandBuffer* commandBuffer)
 {
-    if (commandBuffer != _currentPass.get()) {
+    if (commandBuffer != _currentGraphicsPass.get()) {
         return;
     }
     
-    id<MTLRenderCommandEncoder> encoder = _currentPass->getMTLEncoder();
+    id<MTLRenderCommandEncoder> encoder = _currentGraphicsPass->getMTLEncoder();
     [encoder endEncoding];
-    _currentPass.reset();
+    _currentGraphicsPass.reset();
 }
 
 id<MTLCommandBuffer> MetalCommandBuffer::getMTLCommandBuffer()
@@ -58,7 +60,7 @@ id<MTLCommandBuffer> MetalCommandBuffer::getMTLCommandBuffer()
 
 void MetalCommandBuffer::commit()
 {
-    dg_assert_nm(_currentPass == nullptr);
+    dg_assert_nm(_currentGraphicsPass == nullptr);
     [_commandBuffer commit];
 }
 
@@ -91,7 +93,7 @@ MTLRenderPassDescriptor* MetalCommandBuffer::getMTLRenderPassDescriptor(MetalRen
         MetalTexture* texture = _resourceManager->GetResource<MetalTexture>(frameBuffer.depth());
         const DepthAttachmentDesc& attachment = info.depthAttachment().value();
         if (texture) {
-            MTLRenderPassDepthAttachmentDescriptor* depthAttachment = [MTLRenderPassDepthAttachmentDescriptor new];            
+            MTLRenderPassDepthAttachmentDescriptor* depthAttachment = [MTLRenderPassDepthAttachmentDescriptor new];
             depthAttachment.texture = texture->mtlTexture;
             depthAttachment.loadAction = MetalEnumAdapter::toMTL(attachment.loadAction);
             depthAttachment.storeAction = MetalEnumAdapter::toMTL(attachment.storeAction);
@@ -101,7 +103,43 @@ MTLRenderPassDescriptor* MetalCommandBuffer::getMTLRenderPassDescriptor(MetalRen
         }
     }
     
-    dg_assert(info.stencilAttachment().has_value() == false, "TODO");
+    if (info.stencilAttachment().has_value()) {
+        MetalTexture* texture = _resourceManager->GetResource<MetalTexture>(frameBuffer.stencil());
+        const StencilAttachmentDesc& attachment = info.stencilAttachment().value();
+        if (texture) {
+            MTLRenderPassStencilAttachmentDescriptor* stencil = [MTLRenderPassStencilAttachmentDescriptor new];
+            stencil.texture = texture->mtlTexture;
+            stencil.loadAction = MetalEnumAdapter::toMTL(attachment.loadAction);
+            stencil.storeAction = MetalEnumAdapter::toMTL(attachment.storeAction);
+            stencil.clearStencil = attachment.clearStencil;
+            
+            renderPassDesc.stencilAttachment = stencil;
+        }
+    }
     
     return renderPassDesc;
+}
+
+ComputePassCommandBuffer* MetalCommandBuffer::beginComputePass(const std::string& name)
+{
+    if (_currentGraphicsPass || _currentComputePass) {
+        assert(false);
+    }
+    
+    id<MTLComputeCommandEncoder> encoder = [_commandBuffer computeCommandEncoder];
+    encoder.label = [NSString stringWithUTF8String:name.c_str()];
+    _currentComputePass.reset(new MetalComputePassCommandBuffer(encoder, _resourceManager));
+    
+    return _currentComputePass.get();
+}
+
+void MetalCommandBuffer::endComputePass(ComputePassCommandBuffer* commandBuffer)
+{
+    if (commandBuffer != _currentComputePass.get()) {
+        return;
+    }
+    
+    id<MTLComputeCommandEncoder> encoder = _currentComputePass->getMTLEncoder();
+    [encoder endEncoding];
+    _currentComputePass.reset();
 }

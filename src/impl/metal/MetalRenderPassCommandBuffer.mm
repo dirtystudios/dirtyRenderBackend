@@ -25,7 +25,9 @@ void MetalRenderPassCommandBuffer::setPipelineState(PipelineStateId pipelineStat
     
     _currentPipelineState = pipelineState;
     
-    [_encoder setDepthStencilState:pipelineState->mtlDepthStencilState];
+    if (pipelineState->mtlDepthStencilState) {
+        [_encoder setDepthStencilState:pipelineState->mtlDepthStencilState];
+    }
     [_encoder setFrontFacingWinding:MetalEnumAdapter::toMTL(pipelineState->pipelineStateDesc.rasterState.windingOrder)];
     [_encoder setCullMode:MetalEnumAdapter::toMTL(pipelineState->pipelineStateDesc.rasterState.cullMode)];
     [_encoder setTriangleFillMode:MetalEnumAdapter::toMTL(pipelineState->pipelineStateDesc.rasterState.fillMode)];
@@ -92,6 +94,18 @@ void MetalRenderPassCommandBuffer::setVertexBuffer(BufferId vertexBuffer)
 {
     MetalBuffer* buffer = _resourceManager->GetResource<MetalBuffer>(vertexBuffer);
     [_encoder setVertexBuffer:buffer->mtlBuffer offset:0 atIndex:0];
+}
+
+void MetalRenderPassCommandBuffer::setViewport(double originX, double originY, double width, double height)
+{
+    MTLViewport viewport;
+    viewport.width = width;
+    viewport.height = height;
+    viewport.originX = originX;
+    viewport.originY = originY;
+    viewport.znear = 0.0;
+    viewport.zfar = 1.0;
+    [_encoder setViewport:viewport];
 }
 
 id<MTLRenderCommandEncoder> MetalRenderPassCommandBuffer::getMTLEncoder()

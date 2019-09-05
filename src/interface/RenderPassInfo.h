@@ -24,10 +24,12 @@ namespace gfx
         const std::optional<StencilAttachmentDesc>& stencilAttachment() const { return _stencilAttachment; }
         bool hasDepth() const { return _depthAttachment.has_value(); }
         bool hasStencil() const { return _stencilAttachment.has_value(); }
-        
+        void setLabel(const std::string& label) { _label = label; }
+        const std::string& label() const { return _label; }
     private:
         std::vector<ColorAttachmentDesc> _colorAttachments;
         std::optional<DepthAttachmentDesc> _depthAttachment;
         std::optional<StencilAttachmentDesc> _stencilAttachment;
+        std::string _label;
     };
 }
