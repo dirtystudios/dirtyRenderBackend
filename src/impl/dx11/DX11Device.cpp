@@ -12,8 +12,6 @@ namespace gfx {
     using namespace Microsoft::WRL;
 
     BufferId DX11Device::AllocateBuffer(const BufferDesc& desc, const void* initialData) {
-        ComPtr<ID3D11Buffer> buffer = NULL;
-
         D3D11_BUFFER_DESC bufferDesc = { 0 };
 
         if (desc.accessFlags == BufferAccessBitGpuReadCpuWrite) {
@@ -23,23 +21,18 @@ namespace gfx {
             bufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
         }
         else {
-            assert(false && "unsupported access flags");
+            dg_assert_fail("unsupported access flags");
         }
 
         switch (desc.usageFlags) {
-        case BufferUsageFlags::VertexBufferBit:
-            bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-            break;
-        case BufferUsageFlags::IndexBufferBit:
-            bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-            break;
-        case BufferUsageFlags::ConstantBufferBit:
-            bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-            break;
+        case BufferUsageFlags::VertexBufferBit:   bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER; break;
+        case BufferUsageFlags::IndexBufferBit:    bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER; break;
+        case BufferUsageFlags::ConstantBufferBit: bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER; break;
+        case BufferUsageFlags::ShaderBufferBit:   bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE; break;
         default:
-            assert(false);
+            dg_assert_fail_nm();
         }
-        
+
         uint32_t buffSize = desc.size;
 
         if (bufferDesc.BindFlags == D3D11_BIND_CONSTANT_BUFFER) {
@@ -49,6 +42,16 @@ namespace gfx {
                 buffSize += (16 - sizeCheck);
             }
         }
+        else if (bufferDesc.BindFlags == D3D11_BIND_SHADER_RESOURCE) {
+            if (desc.accessFlags == BufferAccessBitGpuWrite)
+                bufferDesc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+            if (desc.stride == 0)
+                bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
+            else {
+                bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+                bufferDesc.StructureByteStride = desc.stride;
+            }
+        }
 
         bufferDesc.ByteWidth = static_cast<UINT>(buffSize);
 
@@ -56,7 +59,6 @@ namespace gfx {
             bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
         else
             bufferDesc.CPUAccessFlags = 0;
-        bufferDesc.MiscFlags = 0;
 
         D3D11_SUBRESOURCE_DATA initData;
         if (initialData) {
@@ -65,11 +67,56 @@ namespace gfx {
             initData.SysMemSlicePitch = 0;
         }
 
+        ComPtr<ID3D11Buffer> buffer = NULL;
+
         DX11_CHECK_RET0(m_dev->CreateBuffer(&bufferDesc, initialData ? &initData : NULL, &buffer));
         if (desc.debugName != "")
             D3D_SET_OBJECT_NAME_A(buffer, desc.debugName.c_str());
-        BufferDX11 *bufferdx11 = new BufferDX11();;
+
+        ComPtr<ID3D11ShaderResourceView> srv = NULL;
+        ComPtr<ID3D11UnorderedAccessView> uav = NULL;
+        if ((bufferDesc.BindFlags & (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS)) == (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS)) {
+            D3D11_UNORDERED_ACCESS_VIEW_DESC descuav{};
+            descuav.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+            descuav.Buffer.FirstElement = 0;
+            if (desc.stride == 0) {
+                descuav.Format = DXGI_FORMAT_R32_TYPELESS;
+                descuav.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_RAW;
+                descuav.Buffer.NumElements = buffSize / 4;
+            }
+            else {
+                descuav.Format = DXGI_FORMAT_UNKNOWN;
+                descuav.Buffer.NumElements = desc.size / desc.stride;
+            }
+
+            DX11_CHECK(m_dev->CreateUnorderedAccessView(buffer.Get(), &descuav, &uav));
+            std::string tmp = desc.debugName + "UAV";
+            D3D_SET_OBJECT_NAME_A(buffer, tmp.c_str());
+        }
+        else if ((bufferDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) == D3D11_BIND_SHADER_RESOURCE) {
+
+            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+            srvDesc.BufferEx.FirstElement = 0;
+            if (desc.stride == 0) {
+                srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+                srvDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
+                srvDesc.BufferEx.NumElements = buffSize / 4;
+            }
+            else {
+                srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+                srvDesc.BufferEx.NumElements = desc.size / desc.stride;
+            }
+
+            DX11_CHECK(m_dev->CreateShaderResourceView(buffer.Get(), &srvDesc, &srv));
+            std::string tmp = desc.debugName + "SRV";
+            D3D_SET_OBJECT_NAME_A(buffer, tmp.c_str());
+        }
+
+        BufferDX11* bufferdx11 = new BufferDX11();
         bufferdx11->buffer.Swap(buffer);
+        bufferdx11->srv.Swap(srv);
+        bufferdx11->uav.Swap(uav);
         return m_resourceManager->AddResource(bufferdx11);
     }
 
@@ -220,7 +267,7 @@ namespace gfx {
 
         if (FAILED(hr)) {
             if (errorBlob) {
-                LOG_E("DX11RenderDev: Failed to Compile Shader. Error: %s", errorBlob->GetBufferPointer());
+                LOG_E("DX11RenderDev: Failed to Compile Shader. Error: %s", (char*)errorBlob->GetBufferPointer());
             }
             else {
                 LOG_E("DX11RenderDev: Failed to compile Shader. Hr: 0x%x", hr);
@@ -282,6 +329,23 @@ namespace gfx {
         else {
             stateDx11->rasterState = rasterState->second.rs.Get();
         }
+
+        auto id = m_resourceManager->AddResource(stateDx11);
+        m_cache.pipelineCache.emplace(id, descHash);
+        return id;
+    }
+
+    PipelineStateId DX11Device::CreateComputePipelineState(const ComputePipelineStateDesc& desc) {
+        size_t descHash = std::hash<ComputePipelineStateDesc>()(desc);
+        auto pc = m_cache.pipelineCache.find(descHash);
+        if (pc != m_cache.pipelineCache.end()) {
+            return pc->second;
+        }
+
+        PipelineStateDX11* stateDx11 = new PipelineStateDX11();
+
+        ShaderDX11* cs = m_resourceManager->GetResource<ShaderDX11>(desc.computeShader);
+        stateDx11->computeShader = cs->computeShader;
 
         auto id = m_resourceManager->AddResource(stateDx11);
         m_cache.pipelineCache.emplace(id, descHash);

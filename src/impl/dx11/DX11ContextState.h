@@ -27,10 +27,20 @@ namespace gfx {
         std::unordered_map<uint32_t, ID3D11SamplerState*> psSamplers;
         std::unordered_set<uint32_t> psDirtyTextureSlots;
 
+        std::unordered_map<uint32_t, ID3D11Buffer*> csCBuffers;
+        std::unordered_set<uint32_t> csCBufferDirtySlots;
+        std::unordered_map<uint32_t, ID3D11ShaderResourceView*> csTextures;
+        std::unordered_map<uint32_t, ID3D11SamplerState*> csSamplers;
+        std::unordered_set<uint32_t> csDirtyTextureSlots;
+        std::unordered_map<uint32_t, ID3D11UnorderedAccessView*> csUavs;
+        std::unordered_set<uint32_t> csDirtyUavSlots;
+
         std::array<ID3D11RenderTargetView*, kMaxFramebufferColorAttachments> rtvs{};
         uint8_t rtv_count{ 0 };
 
         ID3D11DepthStencilView* dsv;
+
+        ID3D11ComputeShader* computeShader{ nullptr };
 
         ID3D11PixelShader* pixelShader{ nullptr };
 

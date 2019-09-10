@@ -60,6 +60,7 @@ namespace gfx {
         void AddOrUpdateShaders(const std::vector<ShaderData>& shaderData) final;
 
         PipelineStateId CreatePipelineState(const PipelineStateDesc& desc) final;
+        PipelineStateId CreateComputePipelineState(const ComputePipelineStateDesc& desc) final;
 
         TextureId CreateTexture2D(PixelFormat format, const TextureUsageFlags& usage, uint32_t width, uint32_t height, void* data, const std::string& debugName = "") final;
         TextureId CreateTextureArray(PixelFormat format, uint32_t levels, uint32_t width, uint32_t height,
