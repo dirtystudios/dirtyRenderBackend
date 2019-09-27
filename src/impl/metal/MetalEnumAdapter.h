@@ -52,6 +52,9 @@ public:
             case MTLFunctionTypeFragment: {
                 return ShaderType::PixelShader;
             }
+            case MTLFunctionTypeKernel: {
+                return ShaderType::ComputeShader;
+            }
             default:
                 dg_assert_fail_nm();
         }

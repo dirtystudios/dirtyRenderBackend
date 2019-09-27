@@ -50,6 +50,14 @@ namespace gfx {
         MTLRenderPipelineReflection* reflection;
     };
 
+    struct MetalComputePipelineState : public Resource {
+        ~MetalComputePipelineState() {}
+        
+        id<MTLComputePipelineState> mtlComputePipelineState;
+        ComputePipelineStateDesc desc;
+        MTLAutoreleasedComputePipelineReflection* reflection;
+    };
+
     struct MetalTexture : public Resource {
         ~MetalTexture() {}
 

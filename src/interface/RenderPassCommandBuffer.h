@@ -15,6 +15,7 @@ namespace gfx
     class RenderPassCommandBuffer
     {
     public:
+        virtual void setViewport(double originX, double originY, double width, double height) {};
         virtual void setPipelineState(PipelineStateId pipelineState) = 0;
         virtual void setVertexBuffer(BufferId vertexBuffer) = 0;
         virtual void setShaderBuffer(BufferId buffer, uint8_t index, const ShaderStageFlags& stages) = 0;

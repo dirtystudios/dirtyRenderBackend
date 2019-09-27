@@ -40,6 +40,7 @@ namespace gfx {
         
         virtual BufferId AllocateBuffer(const BufferDesc& desc, const void* initialData = nullptr) = 0;
         virtual PipelineStateId CreatePipelineState(const PipelineStateDesc& desc) = 0;
+        virtual PipelineStateId CreateComputePipelineState(const ComputePipelineStateDesc& desc) = 0;
         virtual RenderPassId CreateRenderPass(const RenderPassInfo& renderPassInfo) = 0;
         virtual TextureId CreateTexture2D(PixelFormat format, const TextureUsageFlags& usage, uint32_t width, uint32_t height, void* data, const std::string& debugName = "") = 0;
         virtual TextureId CreateTextureArray(PixelFormat format, uint32_t levels, uint32_t width, uint32_t height, uint32_t depth, const std::string& debugName = "") = 0;
@@ -48,13 +49,13 @@ namespace gfx {
 
         virtual void DestroyResource(ResourceId resourceId) = 0;
         
-        virtual void Submit(const std::vector<CommandBuffer*>& cmdBuffers) {}
+        virtual void Submit(const std::vector<CommandBuffer*>& cmdBuffers) = 0;
 
         virtual uint8_t* MapMemory(BufferId buffer, const BufferAccess& access) = 0;
         virtual void UnmapMemory(BufferId buffer) = 0;
 
         virtual void UpdateTexture(TextureId texture, uint32_t slice, const void* srcData) = 0;
                 
-        virtual CommandBuffer* CreateCommandBuffer() { return nullptr; }
+        virtual CommandBuffer* CreateCommandBuffer() = 0;
     };
 }

@@ -45,12 +45,15 @@ uint32_t ComputeBytesPerRow(MTLPixelFormat format, uint32_t width)
         case MTLPixelFormatR8Unorm:
             return width;
         case MTLPixelFormatR32Float:
+        case MTLPixelFormatBGRA8Unorm:
         case MTLPixelFormatRGBA8Unorm:
             return 4 * width;
         case MTLPixelFormatRGBA32Float:
             return 16 * width;
         case MTLPixelFormatDepth32Float:
             return 16 * width;
+        case MTLPixelFormatDepth32Float_Stencil8:
+            return 24 * width;
         default:
             dg_assert_fail_nm();
     }
@@ -147,6 +150,36 @@ VertexLayoutId MetalDevice::CreateVertexLayout(const VertexLayoutDesc& desc) {
     return _resourceManager->AddResource(vertLayout);
 }
 
+PipelineStateId MetalDevice::CreateComputePipelineState(const ComputePipelineStateDesc& desc)
+{
+    static std::unordered_map<size_t, PipelineStateId> cache; // hobo cache
+
+    size_t h  = std::hash<ComputePipelineStateDesc>()(desc);
+    auto   it = cache.find(h);
+    if (it != end(cache)) {
+        return it->second;
+    }
+    
+    MTLComputePipelineDescriptor* cpd = [[MTLComputePipelineDescriptor alloc] init];
+    cpd.computeFunction = _resourceManager->GetResource<MetalLibraryFunction>(desc.computeShader)->mtlFunction;
+    
+    NSError* error = nil;
+    MTLAutoreleasedComputePipelineReflection* reflection = nil;
+    MTLPipelineOption options = MTLPipelineOptionBufferTypeInfo | MTLPipelineOptionArgumentInfo;
+    id<MTLComputePipelineState>  mtlPipelineState = [_device newComputePipelineStateWithDescriptor:cpd options:options reflection:reflection error:&error];
+    dg_assert(error == nil, "Failed to create pipeline state:%s", [[error localizedDescription] UTF8String]);
+        
+    MetalComputePipelineState* pipelineState  = new MetalComputePipelineState();
+    pipelineState->mtlComputePipelineState = mtlPipelineState;
+    pipelineState->desc    = desc;
+    pipelineState->reflection = reflection;
+
+    PipelineStateId pipelineStateId = _resourceManager->AddResource(pipelineState);
+    cache.insert({h, pipelineStateId});
+
+    return pipelineStateId;
+}
+
 PipelineStateId MetalDevice::CreatePipelineState(const PipelineStateDesc& desc) {
     static std::unordered_map<size_t, PipelineStateId> cache; // hobo cache
 
@@ -161,10 +194,13 @@ PipelineStateId MetalDevice::CreatePipelineState(const PipelineStateDesc& desc) 
         return NULL_ID;
     }
     
+    
     MTLRenderPipelineDescriptor* rpd = [[MTLRenderPipelineDescriptor alloc] init];
 
-    MetalVertexLayout* vertexLayout             = _resourceManager->GetResource<MetalVertexLayout>(desc.vertexLayout);
-    rpd.vertexDescriptor                        = vertexLayout->mtlVertexDesc;
+    if (desc.vertexLayout != NULL_ID) {
+        MetalVertexLayout* vertexLayout             = _resourceManager->GetResource<MetalVertexLayout>(desc.vertexLayout);
+        rpd.vertexDescriptor                        = vertexLayout->mtlVertexDesc;
+    }
     rpd.vertexFunction                          = _resourceManager->GetResource<MetalLibraryFunction>(desc.vertexShader)->mtlFunction;
     rpd.fragmentFunction                        = _resourceManager->GetResource<MetalLibraryFunction>(desc.pixelShader)->mtlFunction;
     
@@ -206,7 +242,6 @@ PipelineStateId MetalDevice::CreatePipelineState(const PipelineStateDesc& desc) 
 
         mtlDepthStencilState = [_device newDepthStencilStateWithDescriptor:dsd];
     }
-
     MetalPipelineState* pipelineState   = new MetalPipelineState();
     pipelineState->mtlPipelineState     = mtlPipelineState;
     pipelineState->mtlDepthStencilState = mtlDepthStencilState;

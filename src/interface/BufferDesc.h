@@ -14,6 +14,7 @@ struct BufferDesc {
     BufferLifetime lifetime{BufferLifetime::Persistent};
     bool isDynamic{false}; // will you be writing to the buffer while the gpu is using it
     size_t size{0};
+    size_t stride{0};
     std::string debugName{""};
 
     static BufferDesc defaultTransient(BufferUsageFlags usageFlags, size_t size, const std::string& debugName = "") {

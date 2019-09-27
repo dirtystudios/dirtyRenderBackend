@@ -113,6 +113,18 @@ namespace gfx {
         }
     }
 
+    void DX11Context::SetComputeCBuffer(uint32_t slot, ID3D11Buffer* buffer) {
+        auto it = m_currentState.csCBuffers.find(slot);
+        if (it == m_currentState.csCBuffers.end()) {
+            m_pendingState.csCBuffers.emplace(slot, buffer);
+            m_pendingState.csCBufferDirtySlots.emplace(slot);
+        }
+        else if (it->second != buffer) {
+            m_pendingState.csCBuffers[slot] = buffer;
+            m_pendingState.csCBufferDirtySlots.emplace(slot);
+        }
+    }
+
     void DX11Context::SetInputLayout(uint32_t stride, ID3D11InputLayout* layout) {
         m_pendingState.inputLayout = layout;
         m_pendingState.inputLayoutStride = stride;
@@ -132,6 +144,10 @@ namespace gfx {
 
     void DX11Context::SetPixelShader(ID3D11PixelShader* shader) {
         m_pendingState.pixelShader = shader;
+    }
+
+    void DX11Context::SetComputeShader(ID3D11ComputeShader* shader) {
+        m_pendingState.computeShader = shader;
     }
 
     void DX11Context::SetPixelShaderTexture(uint32_t slot, ID3D11ShaderResourceView* srv, ID3D11SamplerState* sampler) {
@@ -161,6 +177,33 @@ namespace gfx {
             m_pendingState.vsTextures[slot] = srv;
             m_pendingState.vsSamplers[slot] = sampler;
             m_pendingState.vsDirtyTextureSlots.emplace(slot);
+        }
+    }
+
+    void DX11Context::SetComputeShaderTexture(uint32_t slot, ID3D11ShaderResourceView* srv, ID3D11SamplerState* sampler) {
+        auto it = m_currentState.csTextures.find(slot);
+        auto its = m_currentState.csSamplers.find(slot);
+        if (it == m_currentState.csTextures.end() || its == m_currentState.csSamplers.end()) {
+            m_pendingState.csTextures.emplace(slot, srv);
+            m_pendingState.csSamplers.emplace(slot, sampler);
+            m_pendingState.csDirtyTextureSlots.emplace(slot);
+        }
+        else if (it->second != srv || its->second != sampler) {
+            m_pendingState.csTextures[slot] = srv;
+            m_pendingState.csSamplers[slot] = sampler;
+            m_pendingState.csDirtyTextureSlots.emplace(slot);
+        }
+    }
+
+    void DX11Context::SetComputeShaderUAV(uint32_t slot, ID3D11UnorderedAccessView* uav) {
+        auto it = m_currentState.csUavs.find(slot);
+        if (it == m_currentState.csUavs.end()) {
+            m_pendingState.csUavs.emplace(slot, uav);
+            m_pendingState.csDirtyUavSlots.emplace(slot);
+        }
+        else if (it->second != uav) {
+            m_pendingState.csUavs[slot] = uav;
+            m_pendingState.csDirtyUavSlots.emplace(slot);
         }
     }
 
@@ -241,6 +284,32 @@ namespace gfx {
         m_pendingState.psDirtyTextureSlots.clear();
         m_pendingState.vsCBufferDirtySlots.clear();
         m_pendingState.vsDirtyTextureSlots.clear();
+        m_currentState = m_pendingState;
+    }
+
+    void DX11Context::Dispatch(uint32_t x, uint32_t y, uint32_t z) {
+        if (m_pendingState.computeShader != nullptr && m_currentState.computeShader != m_pendingState.computeShader)
+            m_devcon->CSSetShader(m_pendingState.computeShader, 0, 0);
+
+        for (uint32_t slot : m_pendingState.csDirtyTextureSlots) {
+            // todo: batch these calls
+            m_devcon->CSSetShaderResources(slot, 1u, &m_pendingState.csTextures[slot]);
+            if (auto sampler = m_pendingState.csSamplers[slot])
+                m_devcon->CSSetSamplers(slot, 1u, &sampler);
+        }
+
+        for (uint32_t slot : m_pendingState.csDirtyUavSlots)
+            m_devcon->CSSetUnorderedAccessViews(slot, 1u, &m_pendingState.csUavs[slot], nullptr);
+
+        for (uint32_t slot : m_pendingState.csCBufferDirtySlots)
+            m_devcon->CSSetConstantBuffers(slot, 1u, &m_pendingState.csCBuffers[slot]);
+
+        m_devcon->Dispatch(x, y, z);
+
+        //cleanup state before set
+        m_pendingState.csCBufferDirtySlots.clear();
+        m_pendingState.csDirtyTextureSlots.clear();
+        m_pendingState.csDirtyUavSlots.clear();
         m_currentState = m_pendingState;
     }
 

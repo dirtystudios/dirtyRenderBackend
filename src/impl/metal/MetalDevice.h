@@ -38,6 +38,7 @@ namespace gfx {
         virtual ShaderId GetShader(ShaderType type, const std::string& functionName) override;
         virtual void AddOrUpdateShaders(const std::vector<ShaderData>& shaderData) override;
         virtual PipelineStateId CreatePipelineState(const PipelineStateDesc& desc) override;
+        virtual PipelineStateId CreateComputePipelineState(const ComputePipelineStateDesc& desc) override;
         virtual RenderPassId CreateRenderPass(const RenderPassInfo& renderPassInfo) override;
         virtual CommandBuffer* CreateCommandBuffer() override;
         virtual uint8_t* MapMemory(BufferId bufferId, const BufferAccess& access) override;
